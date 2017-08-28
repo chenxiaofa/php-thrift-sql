@@ -56,11 +56,11 @@ final class TDurability {
 }
 
 final class TReadType {
-  const DEFAULT_ = 1;
+  const DEFAULT_TYPE = 1;// PHP < 7.0
   const STREAM = 2;
   const PREAD = 3;
   static public $__names = array(
-    1 => 'DEFAULT',
+    1 => 'DEFAULT_TYPE',
     2 => 'STREAM',
     3 => 'PREAD',
   );

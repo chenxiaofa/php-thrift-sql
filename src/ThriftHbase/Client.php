@@ -2,6 +2,7 @@
 namespace ThriftHbase;
 
 use Hbase\Thrift\HbaseClient;
+use Hbase\Thrift\Mutation;
 use Thrift\Exception\TTransportException;
 use Thrift\Protocol\TBinaryProtocol;
 use Thrift\Transport\TBufferedTransport;
@@ -13,8 +14,9 @@ use Hbase\Thrift\IOError;
  * User: xfachen
  * Date: 2017/8/24
  * Time: 19:29
- * @method get(String $table, String $row, Array $column=[])
+ * @method get(String $table, String $row, Array $column = [])
  * @method put(String $table, String $row, Array $modifies)
+ * @method exists(String $table, String $row, Array $column = [])
  */
 class Client
 {
@@ -23,6 +25,12 @@ class Client
     protected $protocol = null;
     protected $client = null;
 
+    /**
+     * Client constructor.
+     * @param string $host
+     * @param string $port
+     * @param int $timeout
+     */
     public function __construct($host = '127.0.0.1', $port = '9090', $timeout = 1000)
     {
         $this->socket = new TSocket($host, $port);
@@ -33,6 +41,18 @@ class Client
         $this->client = new HbaseClient($this->protocol);
     }
 
+    /**
+     * return HbaseClient instance
+     * @return HbaseClient
+     */
+    public function getClient()
+    {
+        return $this->client;
+    }
+
+    /**
+     * @return $this
+     */
     public function connect()
     {
         if ($this->transport->isOpen()) {
@@ -42,33 +62,67 @@ class Client
         return $this;
     }
 
-    public function _exists($table, $row)
+    /**
+     * Return true if row or column exists, otherwise return false
+     * @param $table
+     * @param $row
+     * @param array $column
+     * @return bool
+     */
+    protected function _exists($table, $row, $column = [])
     {
-        $return = $this->client->getRow($table, $row, []);
-        return !empty($return);
+        return !is_null($this->_get($table, $row, $column));
     }
 
-    public function _get($table, $row, $column = [])
+    /**
+     * Get data from row
+     * @param $table
+     * @param $row
+     * @param array $column
+     * @return array|null
+     * @throws IOError
+     */
+    protected function _get($table, $row, $column = [])
     {
-        if ($column) {
-            $return = $this->client->getRowWithColumns($table, $row, [$column], []);
-        } else {
-            $return = $this->client->getRow($table, $row, []);
+        if (!is_array($column)) {
+            $column = [(string)$column];
+        }
+        try {
+            if ($column) {
+                $return = $this->client->getRowWithColumns($table, $row, $column, []);
+            } else {
+                $return = $this->client->getRow($table, $row, []);
+            }
+        } catch (IOError $error) {
+            $message = $error->getMessage();
+            if (strpos($message, 'org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException') !== false ||
+                strpos($message, 'org.apache.hadoop.hbase.TableNotFoundException') !== false
+            ) {
+                //table or column not found, return null
+                return null;
+            }
+            throw $error;
         }
 
         $output = [];
-        if (empty($return)) return NULL;
+        if (empty($return)) return null;
         foreach ($return[0]->columns as $name => $cell) {
             $output[$name] = $cell->value;
         }
         return $output;
     }
 
-    public function _put($table, $row, $modifies)
+    /**
+     * Put data to row
+     * @param $table
+     * @param $row
+     * @param $modifies
+     */
+    protected function _put($table, $row, $modifies)
     {
         $mutations = [];
         foreach ($modifies as $column => $value) {
-            $mutations[] = new \Hbase\Thrift\Mutation([
+            $mutations[] = new Mutation([
                 'column' => $column,
                 'value' => $value
             ]);
@@ -77,6 +131,13 @@ class Client
     }
 
 
+    /**
+     * @param $name
+     * @param $arguments
+     * @return bool|mixed
+     * @throws TTransportException
+     * @throws \Exception
+     */
     public function __call($name, $arguments)
     {
         $try = 0;
@@ -89,17 +150,18 @@ class Client
                         return call_user_func_array([$this, '_put'], $arguments);
                     case 'exists':
                         return call_user_func_array([$this, '_exists'], $arguments);
+                    default:
+                        throw new \Exception('unknown method:' . $name);
                 }
             } catch (TTransportException $e) {
                 if ($try++ >= 3) {
                     throw $e;
                 }
                 $this->connect();
-            } catch (IOError $e) {
-                return false;
             }
         } while (1);
-
+        //never arrive there
+        return false;
     }
 
 }
