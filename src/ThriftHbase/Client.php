@@ -3,11 +3,13 @@ namespace ThriftHbase;
 
 use Hbase\Thrift\HbaseClient;
 use Hbase\Thrift\Mutation;
+use Hbase\Thrift\TScan;
 use Thrift\Exception\TTransportException;
 use Thrift\Protocol\TBinaryProtocol;
 use Thrift\Transport\TBufferedTransport;
 use Thrift\Transport\TSocket;
 use Hbase\Thrift\IOError;
+use ThriftSQL\Exception;
 
 /**
  * Created by PhpStorm.
@@ -48,6 +50,16 @@ class Client
     public function getClient()
     {
         return $this->client;
+    }
+
+    /**
+     * close
+     */
+    public function close()
+    {
+        if ($this->transport->isOpen()) {
+            $this->transport->close();
+        }
     }
 
     /**
@@ -163,5 +175,15 @@ class Client
         //never arrive there
         return false;
     }
+
+    /**
+     * @param $table
+     * @return Scanner
+     */
+    public function newScanner($table)
+    {
+        return new \ThriftHbase\Scanner($this, $table);
+    }
+
 
 }

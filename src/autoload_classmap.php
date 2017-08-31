@@ -353,6 +353,7 @@ return array(
     'Hbase\Thrift\Hbase_checkAndPut_result'				=> __DIR__ . '/Packages/Hbase/Thrift/Hbase.php',
 
     'ThriftHbase\Client'				=> __DIR__ . '/ThriftHbase/Client.php',
+    'ThriftHbase\Scanner'				=> __DIR__ . '/ThriftHbase/Scanner.php',
 
 
 
