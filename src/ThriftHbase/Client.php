@@ -186,4 +186,9 @@ class Client
     }
 
 
+    public function getTableRegions($table)
+    {
+        return $this->client->getTableRegions($table);
+    }
+
 }
