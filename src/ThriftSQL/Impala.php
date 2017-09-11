@@ -52,19 +52,19 @@ class Impala implements \ThriftSQL {
 
   public function query( $queryStr ) {
     try {
-      return new ImpalaQuery( $queryStr, $this->_client );
+      return new ImpalaQuery( $queryStr, $this->_client, $this->_username );
     } catch ( Exception $e ) {
       throw new \ThriftSQL\Exception( $e->getMessage() );
     }
   }
 
-  public function queryAndFetchAll( $queryStr ) {
+  public function queryAndFetchAll( $queryStr,$pernum=100 ) {
     try {
       $query = $this->query( $queryStr );
       $query->wait();
       $result = array();
       do {
-        $rows = $query->fetch( 100 );
+        $rows = $query->fetch( $pernum );
         if ( empty( $rows ) ) {
           break;
         }

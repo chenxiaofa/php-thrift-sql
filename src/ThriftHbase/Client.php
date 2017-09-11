@@ -22,10 +22,10 @@ use ThriftSQL\Exception;
  */
 class Client
 {
-    protected $socket = null;
-    protected $transport = null;
-    protected $protocol = null;
-    protected $client = null;
+    public $socket = null;
+    public $transport = null;
+    public $protocol = null;
+    public $client = null;
 
     /**
      * Client constructor.
@@ -190,5 +190,6 @@ class Client
     {
         return $this->client->getTableRegions($table);
     }
+
 
 }

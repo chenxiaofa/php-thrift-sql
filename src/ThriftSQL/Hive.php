@@ -75,6 +75,7 @@ class Hive implements \ThriftSQL {
         'statement' => $queryCleaner->clean( $queryStr ),
         'runAsync' => true,
       ) ) );
+      return new \ThriftSQL\HiveQuery( $response, $this->_client );
     } catch ( Exception $e ) {
       throw new \ThriftSQL\Exception( $e->getMessage() );
     }
@@ -84,14 +85,14 @@ class Hive implements \ThriftSQL {
     return new \ThriftSQL\HiveQuery( $response, $this->_client );
   }
 
-  public function queryAndFetchAll( $queryStr ) {
+  public function queryAndFetchAll( $queryStr,$pernum=100 ) {
     try {
       $query = $this->query( $queryStr );
       $query->wait();
       // Collect results
       $resultTuples = array();
       do {
-        $responseTuples = $query->fetch(100);
+        $responseTuples = $query->fetch($pernum);
         // No more data we're done
         if ( empty( $responseTuples ) ) {
           return $resultTuples;

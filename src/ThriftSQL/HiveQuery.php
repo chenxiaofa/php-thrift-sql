@@ -121,4 +121,28 @@ class HiveQuery implements \ThriftSQLQuery {
       )
     );
   }
+
+    public function getColumnNames()
+    {
+        if ( !$this->_ready ) {
+            throw new \ThriftSQL\Exception( "Query is not ready. Call `->wait()` before `->fetch()`" );
+        }
+
+        /** @var \ThriftSQL\TCLIServiceClient $client */
+        $client = $this->_client;
+        $req = new \ThriftSQL\TGetResultSetMetadataReq([
+            'operationHandle' => $this->_resp->operationHandle,
+        ]);
+
+        $res = $client->GetResultSetMetadata($req);
+        $output = [];
+        if ($res->status instanceof \ThriftSQL\TStatus && $res->schema instanceof \ThriftSQL\TTableSchema && !empty($res->schema->columns)) {
+            foreach( $res->schema->columns as $column) {
+                $output[] = $column->columnName;
+            }
+        }
+        return $output;
+    }
+
+
 }

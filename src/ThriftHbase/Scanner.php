@@ -25,7 +25,7 @@ class Scanner
     protected $scanObject = null;
     protected $scanCallback = null;
     protected $scanBatchSize = 1024;
-
+    protected $timeout = 30000;
 
     public function __construct($client, $table)
     {
@@ -62,7 +62,7 @@ class Scanner
         {
             $column = $family.':'.$qualifier;
             $this->filterColumns[] = $column;
-            $this->filters[] = "SingleColumnValueExcludeFilter ('$family', '$qualifier', $operator, 'binary:$comparator',)";
+            $this->filters[] = "SingleColumnValueExcludeFilter ('$family', '$qualifier', $operator, 'binary:$comparator')";
         }
 
         return $this;
@@ -93,8 +93,16 @@ class Scanner
         return $this;
     }
 
+    public function setTimeout($t = 30000)
+    {
+        $this->timeout = $t;
+        return $this;
+    }
+
     public function startScanner()
     {
+        $this->client->socket->setRecvTimeout($this->timeout);
+        $this->client->socket->setSendTimeout($this->timeout);
         $try = 0;
         $scanId = 0;
         $count = 0;
