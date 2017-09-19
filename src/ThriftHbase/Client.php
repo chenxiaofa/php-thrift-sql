@@ -19,6 +19,7 @@ use ThriftSQL\Exception;
  * @method get(String $table, String $row, Array $column = [])
  * @method put(String $table, String $row, Array $modifies)
  * @method exists(String $table, String $row, Array $column = [])
+ * @method deleteRow(String $table, String $row)
  */
 class Client
 {
@@ -142,6 +143,15 @@ class Client
         $this->client->mutateRow($table, $row, $mutations, []);
     }
 
+    /**
+     * delete a row
+     * @param $table
+     * @param $row
+     */
+    public function _deleteRow($table, $row)
+    {
+        $this->client->deleteAllRow($table, $row, []);
+    }
 
     /**
      * @param $name
@@ -162,6 +172,8 @@ class Client
                         return call_user_func_array([$this, '_put'], $arguments);
                     case 'exists':
                         return call_user_func_array([$this, '_exists'], $arguments);
+                    case 'deleteRow':
+                        return call_user_func_array([$this, '_deleteRow'], $arguments);
                     default:
                         throw new \Exception('unknown method:' . $name);
                 }
@@ -175,6 +187,8 @@ class Client
         //never arrive there
         return false;
     }
+
+
 
     /**
      * @param $table
