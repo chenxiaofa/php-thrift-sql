@@ -4,6 +4,7 @@ namespace ThriftHbase;
 use Hbase\Thrift\HbaseClient;
 use Hbase\Thrift\Mutation;
 use Hbase\Thrift\TScan;
+use Hbase\Thrift2\THBaseServiceClient;
 use Thrift\Exception\TTransportException;
 use Thrift\Protocol\TBinaryProtocol;
 use Thrift\Transport\TBufferedTransport;
@@ -23,25 +24,57 @@ use ThriftSQL\Exception;
  */
 class Client
 {
+    /** @var TSocket */
     public $socket = null;
+
+    /** @var TBufferedTransport */
     public $transport = null;
+
+    /** @var TBinaryProtocol  */
     public $protocol = null;
+
+    /** @var HbaseClient */
     public $client = null;
+    public $timeout = 1000;
+    public $host = '';
+    public $port = '';
+    public $servers = [];
 
     /**
      * Client constructor.
-     * @param string $host
+     * @param string|array $servers
      * @param string $port
      * @param int $timeout
+     * @throws \Exception
      */
-    public function __construct($host = '127.0.0.1', $port = '9090', $timeout = 1000)
+    public function __construct($servers = '127.0.0.1', $port = '9090', $timeout = 1000)
     {
-        $this->socket = new TSocket($host, $port);
-        $this->socket->setSendTimeout($timeout); // Ten seconds (too long for production, but this is just a demo ;)
-        $this->socket->setRecvTimeout($timeout); // Twenty seconds
-        $this->transport = new TBufferedTransport($this->socket);
-        $this->protocol = new TBinaryProtocol($this->transport);
-        $this->client = new HbaseClient($this->protocol);
+        $this->timeout = 1000;
+        if (!is_array($servers))
+        {
+            $servers = ['host'=> $servers, 'port'=> $port, 'weight'=> 100];
+        }
+        if (empty($servers))
+        {
+            throw new \Exception('no server valid');
+        }
+        $totalWeight = 0;
+        foreach($servers as $server)
+        {
+            if (!is_array($server))
+                $server = ['host'=>$server];
+            $host = array_key_exists('host', $server)?$server['host']:'127.0.0.1';
+            $port = array_key_exists('port', $server)?$server['port']:9090;
+            $weight = max([0, array_key_exists('weight', $server)?$server['weight']:100]);
+            $this->servers[] = compact('host', 'port', 'weight');
+            $totalWeight += $weight;
+        }
+
+        if ($totalWeight <= 0)
+        {
+            throw new \Exception('no server valid weight=0');
+        }
+
     }
 
     /**
@@ -58,19 +91,51 @@ class Client
      */
     public function close()
     {
-        if ($this->transport->isOpen()) {
+        if ($this->transport && $this->transport->isOpen()) {
             $this->transport->close();
         }
+    }
+
+    public function getServer()
+    {
+        $weight = 0;
+        foreach($this->servers as $server)
+        {
+            $weight += $server['weight'];
+        }
+        $rand = rand(0, $weight - 1);
+        $weight = 0;
+
+        foreach($this->servers as $server)
+        {
+            $weight += $server['weight'];
+            if ($rand < $weight)
+                return [$server['host'], $server['port']];
+        }
+
+        //never arrived
+        return ['127.0.0.1', '9090'];
+
     }
 
     /**
      * @return $this
      */
-    public function connect()
+    public function connect($keepServer = false)
     {
-        if ($this->transport->isOpen()) {
-            $this->transport->close();
+        $this->close();
+
+        if (!$keepServer || !($this->transport))
+        {
+            list($this->host, $this->port) = $this->getServer();
+            $this->socket = new TSocket($this->host, $this->port);
+            $this->socket->setSendTimeout($this->timeout); // Ten seconds (too long for production, but this is just a demo ;)
+            $this->socket->setRecvTimeout($this->timeout); // Twenty seconds
+            $this->transport = new TBufferedTransport($this->socket);
+            $this->protocol = new TBinaryProtocol($this->transport);
+            $this->client = new HbaseClient($this->protocol);
         }
+
         $this->transport->open();
         return $this;
     }
@@ -205,5 +270,9 @@ class Client
         return $this->client->getTableRegions($table);
     }
 
+    public function isConnect()
+    {
+        return $this->transport && $this->transport->isOpen();
+    }
 
 }

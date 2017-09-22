@@ -26,6 +26,7 @@ class Scanner
     protected $scanCallback = null;
     protected $scanBatchSize = 1024;
     protected $timeout = 30000;
+    protected $maxReTry = 5;
 
     public function __construct($client, $table)
     {
@@ -99,8 +100,16 @@ class Scanner
         return $this;
     }
 
+    public function setMaxReTry($times)
+    {
+        $this->maxReTry = $times;
+        return $this;
+    }
+
     public function startScanner()
     {
+        if (!$this->client->isConnect())
+            $this->client->connect();
         $this->client->socket->setRecvTimeout($this->timeout);
         $this->client->socket->setSendTimeout($this->timeout);
         $try = 0;
@@ -150,10 +159,10 @@ class Scanner
 
             }catch (TTransportException $e){
                 $try++;
-                if ($try > 5){
+                if ($try > $this->maxReTry){
                     throw $e;
                 }
-                $this->client->connect();
+                $this->client->connect(true);
             }
 
         }while(1);
