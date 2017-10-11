@@ -8,7 +8,6 @@ use Hbase\Thrift2\THBaseServiceClient;
 use Thrift\Exception\TTransportException;
 use Thrift\Protocol\TBinaryProtocol;
 use Thrift\Transport\TBufferedTransport;
-use Thrift\Transport\TSocket;
 use Hbase\Thrift\IOError;
 use ThriftSQL\Exception;
 
@@ -49,10 +48,10 @@ class Client
      */
     public function __construct($servers = '127.0.0.1', $port = '9090', $timeout = 1000)
     {
-        $this->timeout = 1000;
+        $this->timeout = $timeout;
         if (!is_array($servers))
         {
-            $servers = ['host'=> $servers, 'port'=> $port, 'weight'=> 100];
+            $servers = [['host'=> $servers, 'port'=> $port, 'weight'=> 100]];
         }
         if (empty($servers))
         {
@@ -229,6 +228,10 @@ class Client
     {
         $try = 0;
         do {
+            if (!$this->isConnect())
+            {
+                $this->connect();
+            }
             try {
                 switch ($name) {
                     case 'get':

@@ -422,4 +422,5 @@ return array(
     'Hbase\Thrift2\TIllegalArgument'			=>__DIR__.'/Packages/Hbase/Thrift2/Types.php',
 
     'ThriftHbase\Thrift2Client'				=> __DIR__ . '/ThriftHbase/Thrift2Client.php',
+    'ThriftHbase\TSocket'				=> __DIR__ . '/ThriftHbase/TSocket.php',
 );
